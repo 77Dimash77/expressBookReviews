@@ -24,7 +24,7 @@ regd_users.post("/login", (req, res) => {
   if (authenticatedUser(username, password)) {
     let accessToken = jwt.sign({ data: password }, 'access', { expiresIn: 60 * 60 });
     req.session.authorization = { accessToken, username };
-    return res.status(200).json({ message: "User successfully logged in", token: accessToken });
+    return res.status(200).json({ message: "Customer successfully logged in" });
   }
 
   return res.status(401).json({ message: "Invalid username or password" });
@@ -68,6 +68,36 @@ regd_users.delete("/auth/review/:isbn", (req, res) => {
   return res.status(200).json({
     message: "Review successfully deleted.",
     reviews: books[isbn].reviews
+  });
+});
+
+// Task 9 (alternate path): Delete without /auth/ prefix
+regd_users.delete("/review/:isbn", (req, res) => {
+  const isbn = req.params.isbn;
+
+  if (!req.session.authorization) {
+    return res.status(403).json({ message: "User not logged in" });
+  }
+
+  const token = req.session.authorization['accessToken'];
+  jwt.verify(token, 'access', (err) => {
+    if (err) return res.status(403).json({ message: "User not authenticated" });
+
+    const username = req.session.authorization.username;
+
+    if (!books[isbn]) {
+      return res.status(404).json({ message: "Book not found" });
+    }
+
+    if (!books[isbn].reviews[username]) {
+      return res.status(404).json({ message: "Review not found for this user" });
+    }
+
+    delete books[isbn].reviews[username];
+    return res.status(200).json({
+      message: "Review successfully deleted.",
+      reviews: books[isbn].reviews
+    });
   });
 });
 
